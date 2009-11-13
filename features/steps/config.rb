@@ -14,7 +14,7 @@ Given /^a config file template (.*) in (.*)$/ do |file, server_root|
 end
 
 
-Given /^a (\w+) (\w+) in (.*)$/ do |kind,type,path|
+Given /^a[n]{0,1} (\S+) (\w+) in (.*)$/ do |kind,type,path|
   if type == 'file'
     @config_file = path
     File.exists?(path).should be_true  
@@ -43,10 +43,16 @@ Then /^there should be a file called (.*) in (.*)$/ do |name, dir|
 end
 
 Then /^it should be a valid (.*) (.*)$/ do |kind, type|
-
-  system("/usr/sbin/httpd -d #{@tmp_server_root} -t -f #{@config_file}").should be_true  if kind == 'apache'
-  system("/usr/sbin/visudo -c -f #{@config_file}").should be_true  if kind == 'sudoers'
-  system("postconf -c  #{@config_dir} > /dev/null").should be_true  if kind == 'postfix'
+  checks = { 
+  'apache' => "/usr/sbin/httpd -d #{@tmp_server_root} -t -f #{@config_file}",
+  'sudoers' => "/usr/sbin/visudo -c -f #{@config_file}",
+  'postfix' => "postconf -c  #{@config_dir} > /dev/null",
+  'nginx' => "nginx -t -c  #{@config_file}",
+  'named' => "nslint -d -c #{@config_file}" }
+  check = checks[kind]
+  raise "there's no check for #{kind}" if check.nil?
+  puts "DEBUG: #{check}"
+  system(check).should be_true
 
 end
 
