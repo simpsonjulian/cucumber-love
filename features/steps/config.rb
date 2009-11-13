@@ -13,6 +13,19 @@ Given /^a config file template (.*) in (.*)$/ do |file, server_root|
   File.exists?(@template_file).should be_true
 end
 
+
+Given /^a (\w+) (\w+) in (.*)$/ do |kind,type,path|
+  if type == 'file'
+    @config_file = path
+    File.exists?(path).should be_true  
+  end
+  if type == 'dir'
+    @config_dir = path
+    Dir.entries(path).size.should > 2  
+  end
+end
+
+
 When /^I generate it$/ do
   dest_file = File.join(@tmp_server_root,@file)
   FileUtils.mkdir_p(@tmp_server_root)
@@ -29,7 +42,11 @@ Then /^there should be a file called (.*) in (.*)$/ do |name, dir|
   File.exists?(File.join(@tmp_dir,dir,name)).should be_true
 end
 
-And /^it should be valid$/ do
-  system("/usr/sbin/httpd -d #{@tmp_server_root} -t -f #{@config_file}").should be_true
+Then /^it should be a valid (.*) (.*)$/ do |kind, type|
+
+  system("/usr/sbin/httpd -d #{@tmp_server_root} -t -f #{@config_file}").should be_true  if kind == 'apache'
+  system("/usr/sbin/visudo -c -f #{@config_file}").should be_true  if kind == 'sudoers'
+  system("postconf -c  #{@config_dir} > /dev/null").should be_true  if kind == 'postfix'
+
 end
 
