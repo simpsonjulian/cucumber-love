@@ -16,7 +16,7 @@ end
 
 Given /^a[n]{0,1} (\S+) (\w+) in (.*)$/ do |kind,type,path|
   if type == 'file'
-    @config_file = path
+    @config_file = File.join(path, kind)
     File.exists?(path).should be_true  
   end
   if type == 'dir'
@@ -30,7 +30,7 @@ When /^I generate it$/ do
   dest_file = File.join(@tmp_server_root,@file)
   FileUtils.mkdir_p(@tmp_server_root)
 
-  server_root = @server_root # the ERB template needs this
+  server_root = @tmp_server_root # the ERB template needs this
 
   template = ERB.new(File.read(@template_file))
   File.open(dest_file,'w+') {|f| f.write(template.result(binding)) }
@@ -42,17 +42,25 @@ Then /^there should be a file called (.*) in (.*)$/ do |name, dir|
   File.exists?(File.join(@tmp_dir,dir,name)).should be_true
 end
 
-Then /^it should be a valid (.*) (.*)$/ do |kind, type|
+Then /^it should be a syntactically valid (.*) (.*)$/ do |kind, type|
   checks = { 
   'apache' => "/usr/sbin/httpd -d #{@tmp_server_root} -t -f #{@config_file}",
   'sudoers' => "/usr/sbin/visudo -c -f #{@config_file}",
   'postfix' => "postconf -c  #{@config_dir} > /dev/null",
-  'nginx' => "nginx -t -c  #{@config_file}",
-  'named' => "nslint -d -c #{@config_file}" }
+  'nginx' => "nginx -t -c #{@config_file}",
+  'named' => "named-checkconf #{@tmp_dir}/#{@server_root}/#{@config_file}",
+  'monit' => "monit -t -c #{@config_file}" }
   check = checks[kind]
   raise "there's no check for #{kind}" if check.nil?
   puts "DEBUG: #{check}"
   system(check).should be_true
 
 end
+
+When /^copy files from (.*) to the tmp root$/ do |dir|
+  tmp_root = File.join(@tmp_dir, dir)
+  FileUtils.mkdir_p(tmp_root)
+  FileUtils.cp_r("#{dir}/.",tmp_root)
+end
+
 
